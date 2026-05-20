@@ -1,0 +1,892 @@
+basePath: /api/v1
+definitions:
+  auth.ForgotPasswordRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
+  auth.GoogleLoginRequest:
+    properties:
+      id_token:
+        type: string
+    required:
+    - id_token
+    type: object
+  auth.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  auth.RefreshTokenRequest:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
+    type: object
+  auth.RegisterRequest:
+    properties:
+      display_name:
+        type: string
+      email:
+        type: string
+      password:
+        minLength: 6
+        type: string
+    required:
+    - display_name
+    - email
+    - password
+    type: object
+  auth.ResetPasswordRequest:
+    properties:
+      email:
+        type: string
+      new_password:
+        minLength: 6
+        type: string
+      token:
+        type: string
+    required:
+    - email
+    - new_password
+    - token
+    type: object
+  category.CategoryRequest:
+    properties:
+      color:
+        type: string
+      icon:
+        type: string
+      is_active:
+        description: Nullable, defaults to true
+        type: boolean
+      name:
+        type: string
+      order:
+        type: integer
+      parent_id:
+        description: Nullable for parent category
+        type: string
+      type:
+        description: EXPENSE, INCOME
+        type: string
+    required:
+    - color
+    - icon
+    - name
+    - type
+    type: object
+  models.Category:
+    properties:
+      color:
+        type: string
+      created_at:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      is_system:
+        type: boolean
+      name:
+        type: string
+      order:
+        type: integer
+      parent_id:
+        type: string
+      sub_categories:
+        items:
+          $ref: '#/definitions/models.Category'
+        type: array
+      type:
+        description: EXPENSE, INCOME
+        type: string
+      user_id:
+        description: Null for system categories
+        type: string
+    type: object
+  models.Transaction:
+    properties:
+      amount:
+        type: number
+      category:
+        $ref: '#/definitions/models.Category'
+      category_id:
+        type: string
+      created_at:
+        type: string
+      date:
+        type: string
+      id:
+        type: string
+      image_url:
+        type: string
+      note:
+        type: string
+      recurring_id:
+        type: string
+      to_wallet:
+        $ref: '#/definitions/models.Wallet'
+      to_wallet_id:
+        description: For TRANSFER type
+        type: string
+      type:
+        description: EXPENSE, INCOME, TRANSFER
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: string
+      wallet:
+        $ref: '#/definitions/models.Wallet'
+      wallet_id:
+        type: string
+    type: object
+  models.Wallet:
+    properties:
+      balance:
+        type: number
+      color:
+        type: string
+      created_at:
+        type: string
+      currency:
+        type: string
+      exclude_from_total:
+        type: boolean
+      icon:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      type:
+        description: CASH, BANK, CREDIT_CARD, E_WALLET, SAVINGS
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: string
+    type: object
+  transaction.TransactionRequest:
+    properties:
+      amount:
+        type: number
+      category_id:
+        description: Optional for TRANSFER
+        type: string
+      date:
+        type: string
+      image_url:
+        type: string
+      note:
+        type: string
+      recurring_id:
+        type: string
+      to_wallet_id:
+        description: Required for TRANSFER
+        type: string
+      type:
+        description: EXPENSE, INCOME, TRANSFER
+        type: string
+      wallet_id:
+        type: string
+    required:
+    - amount
+    - date
+    - type
+    - wallet_id
+    type: object
+  wallet.WalletRequest:
+    properties:
+      balance:
+        type: number
+      color:
+        type: string
+      currency:
+        type: string
+      exclude_from_total:
+        type: boolean
+      icon:
+        type: string
+      name:
+        type: string
+      type:
+        description: CASH, BANK, CREDIT_CARD, E_WALLET, SAVINGS
+        type: string
+    required:
+    - color
+    - icon
+    - name
+    - type
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: This is a Go API server for Expense Management.
+  title: Expense Management API
+  version: "1.0"
+paths:
+  /auth/forgot-password:
+    post:
+      consumes:
+      - application/json
+      description: Submit email to receive a password reset token (token is printed
+        to server console logs for development).
+      parameters:
+      - description: Email address
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.ForgotPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Reset token generated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: User not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Forgot password request
+      tags:
+      - auth
+  /auth/google:
+    post:
+      consumes:
+      - application/json
+      description: Verify Google ID Token and register or login user, linking to email/password
+        if email matches.
+      parameters:
+      - description: Google ID Token Info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.GoogleLoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful login
+          schema:
+            additionalProperties: true
+            type: object
+        "211":
+          description: Successful registration via Google
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Google Login
+      tags:
+      - auth
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user with email and password and return a JWT token.
+      parameters:
+      - description: Login Info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful login
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Login user
+      tags:
+      - auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Provide a valid refresh token to get a new access token and a rotated
+        refresh token.
+      parameters:
+      - description: Refresh Token Info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.RefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful token refresh
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Invalid or expired refresh token
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Refresh access token
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Create a new user account with email, password, and display name,
+        or link to an existing Google account.
+      parameters:
+      - description: Registration Info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Successful registration
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Register a new user
+      tags:
+      - auth
+  /auth/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: Submit email, reset token, and new password to complete password
+        reset.
+      parameters:
+      - description: Reset Password Info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Password reset successful
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Invalid or expired reset token
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Reset password
+      tags:
+      - auth
+  /categories:
+    get:
+      description: Get a list of all active categories (system categories + custom
+        categories belonging to the user).
+      parameters:
+      - description: Category Type (EXPENSE or INCOME)
+        in: query
+        name: type
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Category'
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get all categories
+      tags:
+      - categories
+    post:
+      consumes:
+      - application/json
+      description: Create a new custom category for the logged-in user.
+      parameters:
+      - description: Category Info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/category.CategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Category'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a category
+      tags:
+      - categories
+  /categories/{id}:
+    delete:
+      description: Deactivate (hide) a category from the user. It is not physically
+        deleted to prevent breaking links of existing transaction records.
+      parameters:
+      - description: Category ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Category deleted successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Category not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete a category
+      tags:
+      - categories
+    put:
+      consumes:
+      - application/json
+      description: Update the details of an existing category. System categories only
+        allow modifying activation status and ordering.
+      parameters:
+      - description: Category ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated Category Info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/category.CategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Category'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Category not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update a category
+      tags:
+      - categories
+  /transactions:
+    get:
+      description: Get a list of all transactions belonging to the logged-in user,
+        optionally filtered by wallet ID.
+      parameters:
+      - description: Filter by wallet ID
+        in: query
+        name: wallet_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Transaction'
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get all transactions
+      tags:
+      - transactions
+    post:
+      consumes:
+      - application/json
+      description: Create a transaction (EXPENSE, INCOME, or TRANSFER) and automatically
+        update wallet balance(s).
+      parameters:
+      - description: Transaction Info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/transaction.TransactionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Transaction'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a transaction
+      tags:
+      - transactions
+  /transactions/{id}:
+    delete:
+      description: Delete a transaction and automatically revert the wallet balance
+        adjustment.
+      parameters:
+      - description: Transaction ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Transaction deleted successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Transaction not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete a transaction
+      tags:
+      - transactions
+    put:
+      consumes:
+      - application/json
+      description: Update transaction details. Reverts the old balance adjustments
+        and applies new adjustments in a single transaction.
+      parameters:
+      - description: Transaction ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated Transaction Info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/transaction.TransactionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Transaction'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Transaction not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update a transaction
+      tags:
+      - transactions
+  /wallets:
+    get:
+      description: Get a list of all active wallets belonging to the logged-in user.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Wallet'
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get all wallets
+      tags:
+      - wallets
+    post:
+      consumes:
+      - application/json
+      description: Create a new wallet for the logged-in user.
+      parameters:
+      - description: Wallet Info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/wallet.WalletRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Wallet'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a wallet
+      tags:
+      - wallets
+  /wallets/{id}:
+    delete:
+      description: Soft delete a wallet if there are no transactions associated with
+        it.
+      parameters:
+      - description: Wallet ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Wallet deleted successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Wallet not found
+          schema:
+            additionalProperties: true
+            type: object
+        "409":
+          description: Conflict - Wallet has associated transactions
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete a wallet
+      tags:
+      - wallets
+    put:
+      consumes:
+      - application/json
+      description: Update the details of an existing wallet.
+      parameters:
+      - description: Wallet ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated Wallet Info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/wallet.WalletRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Wallet'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Wallet not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update a wallet
+      tags:
+      - wallets
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer " followed by your JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
