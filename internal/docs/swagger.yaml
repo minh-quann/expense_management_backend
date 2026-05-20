@@ -152,6 +152,32 @@ definitions:
       wallet_id:
         type: string
     type: object
+  models.User:
+    properties:
+      address:
+        type: string
+      created_at:
+        type: string
+      currency_code:
+        type: string
+      display_name:
+        type: string
+      email:
+        type: string
+      gender:
+        type: string
+      google_id:
+        description: Nullable for Email/Password-only users
+        type: string
+      id:
+        type: string
+      phone_number:
+        type: string
+      photo_url:
+        type: string
+      updated_at:
+        type: string
+    type: object
   models.Wallet:
     properties:
       balance:
@@ -206,6 +232,22 @@ definitions:
     - date
     - type
     - wallet_id
+    type: object
+  user.UpdateProfileRequest:
+    properties:
+      address:
+        type: string
+      currency_code:
+        type: string
+      display_name:
+        type: string
+      gender:
+        type: string
+      phone_number:
+        type: string
+    required:
+    - currency_code
+    - display_name
     type: object
   wallet.WalletRequest:
     properties:
@@ -356,6 +398,39 @@ paths:
             additionalProperties: true
             type: object
       summary: Login user
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: Revoke/invalidate the refresh token, logging out the user from
+        the current session.
+      parameters:
+      - description: Refresh Token to invalidate
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/auth.RefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully logged out
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Logout user
       tags:
       - auth
   /auth/refresh:
@@ -608,6 +683,98 @@ paths:
       summary: Update a category
       tags:
       - categories
+  /profile:
+    get:
+      description: Get detailed profile information of the current logged-in user.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.User'
+        "404":
+          description: User not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user profile
+      tags:
+      - profile
+    put:
+      consumes:
+      - application/json
+      description: Update profile details like display name and preferred currency
+        code.
+      parameters:
+      - description: Profile Info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/user.UpdateProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.User'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update user profile
+      tags:
+      - profile
+  /profile/avatar:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload an image file to set as the user's profile avatar.
+      parameters:
+      - description: Avatar Image File
+        in: formData
+        name: avatar
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.User'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Upload profile avatar
+      tags:
+      - profile
   /transactions:
     get:
       description: Get a list of all transactions belonging to the logged-in user,

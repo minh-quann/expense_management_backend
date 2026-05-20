@@ -8,6 +8,7 @@ import (
 	"expense_management_backend/internal/controllers/auth"
 	"expense_management_backend/internal/controllers/category"
 	"expense_management_backend/internal/controllers/transaction"
+	"expense_management_backend/internal/controllers/user"
 	"expense_management_backend/internal/controllers/wallet"
 	"expense_management_backend/internal/database"
 	"expense_management_backend/internal/models"
@@ -59,19 +60,21 @@ func main() {
 	txRepo := repositories.NewTransactionRepository(database.DB)
 
 	// Initialize services
-	authService := services.NewAuthService(database.DB, userRepo)
+	authService := services.NewAuthService(database.DB, userRepo, cfg)
 	walletService := services.NewWalletService(walletRepo, txRepo)
 	categoryService := services.NewCategoryService(categoryRepo)
 	txService := services.NewTransactionService(database.DB, txRepo, walletRepo, categoryRepo)
+	userService := services.NewUserService(userRepo)
 
 	// Initialize controllers
 	authCtrl := auth.NewAuthController(authService)
 	walletCtrl := wallet.NewWalletController(walletService)
 	categoryCtrl := category.NewCategoryController(categoryService)
 	transactionCtrl := transaction.NewTransactionController(txService)
+	userCtrl := user.NewUserController(userService)
 
 	// Setup router
-	r := router.SetupRouter(authCtrl, walletCtrl, categoryCtrl, transactionCtrl)
+	r := router.SetupRouter(authCtrl, walletCtrl, categoryCtrl, transactionCtrl, userCtrl)
 
 	// Start server
 	addr := fmt.Sprintf(":%s", cfg.AppPort)

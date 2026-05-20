@@ -16,6 +16,9 @@ type User struct {
 	DisplayName  string         `gorm:"type:varchar(255)" json:"display_name"`
 	PhotoURL     string         `gorm:"type:varchar(512)" json:"photo_url,omitempty"`
 	CurrencyCode string         `gorm:"type:varchar(10);default:'VND'" json:"currency_code"`
+	PhoneNumber  string         `gorm:"type:varchar(20)" json:"phone_number"`
+	Address      string         `gorm:"type:varchar(512)" json:"address"`
+	Gender       string         `gorm:"type:varchar(10)" json:"gender"`
 	CreatedAt    time.Time      `json:"created_at"`
 	UpdatedAt    time.Time      `json:"updated_at"`
 	DeletedAt    gorm.DeletedAt `gorm:"index" json:"-"`

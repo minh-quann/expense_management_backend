@@ -45,3 +45,7 @@ func (r *WalletRepository) Save(wallet *models.Wallet) error {
 func (r *WalletRepository) Delete(wallet *models.Wallet) error {
 	return r.db.Delete(wallet).Error
 }
+
+func (r *WalletRepository) ClearFavoritesExcept(userID string, excludeWalletID string) error {
+	return r.db.Model(&models.Wallet{}).Where("user_id = ? AND id != ?", userID, excludeWalletID).Update("is_favorite", false).Error
+}

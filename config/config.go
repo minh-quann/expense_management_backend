@@ -10,6 +10,7 @@ type Config struct {
 	AppPort  string
 	GinMode  string
 	Database DatabaseConfig
+	SMTP     SMTPConfig
 }
 
 // DatabaseConfig holds database connection configuration
@@ -21,6 +22,15 @@ type DatabaseConfig struct {
 	DBName   string
 	SSLMode  string
 	Timezone string
+}
+
+// SMTPConfig holds SMTP server configuration
+type SMTPConfig struct {
+	Host     string
+	Port     string
+	User     string
+	Password string
+	From     string
 }
 
 // DSN returns the PostgreSQL connection string
@@ -44,6 +54,13 @@ func LoadConfig() *Config {
 			DBName:   getEnv("DB_NAME", "expense_management"),
 			SSLMode:  getEnv("DB_SSLMODE", "disable"),
 			Timezone: getEnv("DB_TIMEZONE", "Asia/Ho_Chi_Minh"),
+		},
+		SMTP: SMTPConfig{
+			Host:     getEnv("SMTP_HOST", ""),
+			Port:     getEnv("SMTP_PORT", "587"),
+			User:     getEnv("SMTP_USER", ""),
+			Password: getEnv("SMTP_PASSWORD", ""),
+			From:     getEnv("SMTP_FROM", "no-reply@expensemanagement.com"),
 		},
 	}
 }

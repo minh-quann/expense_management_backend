@@ -9,4 +9,5 @@ type WalletRequest struct {
 	Icon             string  `json:"icon" binding:"required"`
 	Color            string  `json:"color" binding:"required"`
 	ExcludeFromTotal bool    `json:"exclude_from_total"`
+	IsFavorite       bool    `json:"is_favorite"`
 }

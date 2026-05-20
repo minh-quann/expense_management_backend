@@ -23,7 +23,7 @@ func (s *WalletService) GetWallets(userID string) ([]models.Wallet, error) {
 	return s.walletRepo.FindAllByUserID(userID)
 }
 
-func (s *WalletService) CreateWallet(userID string, name, walletType string, balance float64, currency, icon, color string, excludeFromTotal bool) (*models.Wallet, error) {
+func (s *WalletService) CreateWallet(userID string, name, walletType string, balance float64, currency, icon, color string, excludeFromTotal bool, isFavorite bool) (*models.Wallet, error) {
 	// Validate wallet type
 	validTypes := map[string]bool{"CASH": true, "BANK": true, "CREDIT_CARD": true, "E_WALLET": true, "SAVINGS": true}
 	if !validTypes[walletType] {
@@ -43,16 +43,21 @@ func (s *WalletService) CreateWallet(userID string, name, walletType string, bal
 		Icon:             icon,
 		Color:            color,
 		ExcludeFromTotal: excludeFromTotal,
+		IsFavorite:       isFavorite,
 	}
 
 	if err := s.walletRepo.Create(&wallet); err != nil {
 		return nil, errors.New("Failed to create wallet")
 	}
 
+	if isFavorite {
+		_ = s.walletRepo.ClearFavoritesExcept(userID, wallet.ID)
+	}
+
 	return &wallet, nil
 }
 
-func (s *WalletService) UpdateWallet(userID, walletID string, name, walletType string, balance float64, currency, icon, color string, excludeFromTotal bool) (*models.Wallet, error) {
+func (s *WalletService) UpdateWallet(userID, walletID string, name, walletType string, balance float64, currency, icon, color string, excludeFromTotal bool, isFavorite bool) (*models.Wallet, error) {
 	wallet, err := s.walletRepo.FindByIDAndUserID(walletID, userID)
 	if err != nil {
 		return nil, errors.New("Wallet not found")
@@ -67,9 +72,14 @@ func (s *WalletService) UpdateWallet(userID, walletID string, name, walletType s
 	wallet.Icon = icon
 	wallet.Color = color
 	wallet.ExcludeFromTotal = excludeFromTotal
+	wallet.IsFavorite = isFavorite
 
 	if err := s.walletRepo.Save(wallet); err != nil {
 		return nil, errors.New("Failed to update wallet")
+	}
+
+	if isFavorite {
+		_ = s.walletRepo.ClearFavoritesExcept(userID, wallet.ID)
 	}
 
 	return wallet, nil
@@ -96,4 +106,23 @@ func (s *WalletService) DeleteWallet(userID, walletID string) error {
 	}
 
 	return nil
+}
+
+func (s *WalletService) ToggleFavoriteWallet(userID, walletID string) (*models.Wallet, error) {
+	wallet, err := s.walletRepo.FindByIDAndUserID(walletID, userID)
+	if err != nil {
+		return nil, errors.New("Wallet not found")
+	}
+
+	wallet.IsFavorite = !wallet.IsFavorite
+
+	if err := s.walletRepo.Save(wallet); err != nil {
+		return nil, errors.New("Failed to toggle favorite status")
+	}
+
+	if wallet.IsFavorite {
+		_ = s.walletRepo.ClearFavoritesExcept(userID, wallet.ID)
+	}
+
+	return wallet, nil
 }

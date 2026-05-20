@@ -18,6 +18,7 @@ type Wallet struct {
 	Icon             string         `gorm:"type:varchar(100);not null" json:"icon"`
 	Color            string         `gorm:"type:varchar(50);not null" json:"color"`
 	ExcludeFromTotal bool           `gorm:"default:false" json:"exclude_from_total"`
+	IsFavorite       bool           `gorm:"default:false" json:"is_favorite"`
 	CreatedAt        time.Time      `json:"created_at"`
 	UpdatedAt        time.Time      `json:"updated_at"`
 	DeletedAt        gorm.DeletedAt `gorm:"index" json:"-"`

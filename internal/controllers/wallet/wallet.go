@@ -69,6 +69,7 @@ func (ctrl *WalletController) CreateWallet(c *gin.Context) {
 		req.Icon,
 		req.Color,
 		req.ExcludeFromTotal,
+		req.IsFavorite,
 	)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -112,6 +113,7 @@ func (ctrl *WalletController) UpdateWallet(c *gin.Context) {
 		req.Icon,
 		req.Color,
 		req.ExcludeFromTotal,
+		req.IsFavorite,
 	)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -152,4 +154,28 @@ func (ctrl *WalletController) DeleteWallet(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Wallet deleted successfully"})
+}
+
+// ToggleFavorite toggles the favorite status of a wallet
+// @Summary      Toggle wallet favorite status
+// @Description  Toggle the is_favorite flag for a specific wallet and unmark other wallets.
+// @Tags         wallets
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id path string true "Wallet ID"
+// @Success      200  {object}  models.Wallet
+// @Failure      404  {object}  map[string]interface{} "Wallet not found"
+// @Failure      500  {object}  map[string]interface{} "Internal server error"
+// @Router       /wallets/{id}/favorite [patch]
+func (ctrl *WalletController) ToggleFavorite(c *gin.Context) {
+	userID := c.GetString("user_id")
+	walletID := c.Param("id")
+
+	wallet, err := ctrl.walletService.ToggleFavoriteWallet(userID, walletID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, wallet)
 }

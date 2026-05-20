@@ -2,10 +2,10 @@ package services
 
 import (
 	"errors"
-	"log"
 	"strings"
 	"time"
 
+	"expense_management_backend/config"
 	"expense_management_backend/internal/database"
 	"expense_management_backend/internal/models"
 	"expense_management_backend/internal/repositories"
@@ -17,12 +17,14 @@ import (
 type AuthService struct {
 	db       *gorm.DB
 	userRepo *repositories.UserRepository
+	cfg      *config.Config
 }
 
-func NewAuthService(db *gorm.DB, userRepo *repositories.UserRepository) *AuthService {
+func NewAuthService(db *gorm.DB, userRepo *repositories.UserRepository, cfg *config.Config) *AuthService {
 	return &AuthService{
 		db:       db,
 		userRepo: userRepo,
+		cfg:      cfg,
 	}
 }
 
@@ -308,8 +310,10 @@ func (s *AuthService) ForgotPassword(email string) (string, error) {
 		return "", errors.New("Failed to store reset token")
 	}
 
-	// Print reset code to terminal/logs
-	log.Printf("\n🔑 PASSWORD RESET CODE for %s: %s\n", email, resetToken)
+	// Send reset code email (falls back to console logging if SMTP host is empty)
+	if err := utils.SendResetPasswordEmail(s.cfg, email, resetToken); err != nil {
+		return "", errors.New("Failed to send reset email")
+	}
 
 	return resetToken, nil
 }

@@ -6,6 +6,7 @@ import (
 	"expense_management_backend/internal/controllers/auth"
 	"expense_management_backend/internal/controllers/category"
 	"expense_management_backend/internal/controllers/transaction"
+	"expense_management_backend/internal/controllers/user"
 	"expense_management_backend/internal/controllers/wallet"
 	"expense_management_backend/internal/middleware"
 	_ "expense_management_backend/internal/docs" // Import swagger docs
@@ -21,11 +22,15 @@ func SetupRouter(
 	walletCtrl *wallet.WalletController,
 	categoryCtrl *category.CategoryController,
 	transactionCtrl *transaction.TransactionController,
+	userCtrl *user.UserController,
 ) *gin.Engine {
 	r := gin.Default()
 
 	// Swagger UI route
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	// Serve static files in uploads folder
+	r.Static("/uploads", "./uploads")
 
 	// Health check endpoint
 	r.GET("/health", func(c *gin.Context) {
@@ -53,20 +58,20 @@ func SetupRouter(
 			authGroup.POST("/refresh", authCtrl.RefreshToken)
 			authGroup.POST("/forgot-password", authCtrl.ForgotPassword)
 			authGroup.POST("/reset-password", authCtrl.ResetPassword)
+			authGroup.POST("/logout", authCtrl.Logout)
 		}
 
 		// Protected routes
 		protected := v1.Group("/")
 		protected.Use(middleware.AuthMiddleware())
 		{
-			protected.GET("/profile", func(c *gin.Context) {
-				userID := c.GetString("user_id")
-				email := c.GetString("email")
-				c.JSON(http.StatusOK, gin.H{
-					"user_id": userID,
-					"email":   email,
-				})
-			})
+			// Profile routes
+			profile := protected.Group("/profile")
+			{
+				profile.GET("", userCtrl.GetProfile)
+				profile.PUT("", userCtrl.UpdateProfile)
+				profile.POST("/avatar", userCtrl.UploadAvatar)
+			}
 
 			// Wallet routes
 			wallets := protected.Group("/wallets")
@@ -75,6 +80,7 @@ func SetupRouter(
 				wallets.POST("", walletCtrl.CreateWallet)
 				wallets.PUT("/:id", walletCtrl.UpdateWallet)
 				wallets.DELETE("/:id", walletCtrl.DeleteWallet)
+				wallets.PATCH("/:id/favorite", walletCtrl.ToggleFavorite)
 			}
 
 			// Category routes
