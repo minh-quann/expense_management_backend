@@ -18,10 +18,14 @@ type User struct {
 	CurrencyCode string         `gorm:"type:varchar(10);default:'VND'" json:"currency_code"`
 	PhoneNumber  string         `gorm:"type:varchar(20)" json:"phone_number"`
 	Address      string         `gorm:"type:varchar(512)" json:"address"`
-	Gender       string         `gorm:"type:varchar(10)" json:"gender"`
-	CreatedAt    time.Time      `json:"created_at"`
-	UpdatedAt    time.Time      `json:"updated_at"`
-	DeletedAt    gorm.DeletedAt `gorm:"index" json:"-"`
+	Gender             string         `gorm:"type:varchar(10)" json:"gender"`
+	PinHash            *string        `gorm:"type:varchar(255)" json:"-"`
+	SecurityQuestion   *string        `gorm:"type:varchar(255)" json:"security_question,omitempty"`
+	SecurityAnswerHash *string        `gorm:"type:varchar(255)" json:"-"`
+	HasPin             bool           `gorm:"-" json:"has_pin"`
+	CreatedAt          time.Time      `json:"created_at"`
+	UpdatedAt          time.Time      `json:"updated_at"`
+	DeletedAt          gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
 // BeforeCreate GORM hook to generate UUID before saving to DB
@@ -29,5 +33,11 @@ func (u *User) BeforeCreate(tx *gorm.DB) (err error) {
 	if u.ID == "" {
 		u.ID = uuid.New().String()
 	}
+	return
+}
+
+// AfterFind GORM hook to populate virtual fields
+func (u *User) AfterFind(tx *gorm.DB) (err error) {
+	u.HasPin = u.PinHash != nil
 	return
 }

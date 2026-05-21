@@ -169,11 +169,15 @@ definitions:
       google_id:
         description: Nullable for Email/Password-only users
         type: string
+      has_pin:
+        type: boolean
       id:
         type: string
       phone_number:
         type: string
       photo_url:
+        type: string
+      security_question:
         type: string
       updated_at:
         type: string
@@ -235,6 +239,40 @@ definitions:
     - type
     - wallet_id
     type: object
+  user.DisablePINRequest:
+    properties:
+      pin:
+        type: string
+    required:
+    - pin
+    type: object
+  user.ResetPINRequest:
+    properties:
+      new_pin:
+        maxLength: 6
+        minLength: 4
+        type: string
+      security_answer:
+        type: string
+    required:
+    - new_pin
+    - security_answer
+    type: object
+  user.SetPINRequest:
+    properties:
+      pin:
+        maxLength: 6
+        minLength: 4
+        type: string
+      security_answer:
+        type: string
+      security_question:
+        type: string
+    required:
+    - pin
+    - security_answer
+    - security_question
+    type: object
   user.UpdateProfileRequest:
     properties:
       address:
@@ -250,6 +288,13 @@ definitions:
     required:
     - currency_code
     - display_name
+    type: object
+  user.VerifyPINRequest:
+    properties:
+      pin:
+        type: string
+    required:
+    - pin
     type: object
   wallet.WalletRequest:
     properties:
@@ -777,6 +822,176 @@ paths:
       security:
       - BearerAuth: []
       summary: Upload profile avatar
+      tags:
+      - profile
+  /profile/pin:
+    delete:
+      consumes:
+      - application/json
+      description: Disable PIN code protection by providing the correct PIN.
+      parameters:
+      - description: Disable PIN Info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/user.DisablePINRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: PIN disabled successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Incorrect PIN
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Disable PIN code
+      tags:
+      - profile
+    post:
+      consumes:
+      - application/json
+      description: Configure or update the user's PIN code and security question/answer.
+      parameters:
+      - description: PIN Settings
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/user.SetPINRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: PIN set successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Set PIN code
+      tags:
+      - profile
+  /profile/pin/reset:
+    post:
+      consumes:
+      - application/json
+      description: Reset the PIN code using the correct security answer.
+      parameters:
+      - description: Reset PIN Info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/user.ResetPINRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: PIN reset successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Incorrect answer or invalid PIN
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Reset PIN code
+      tags:
+      - profile
+  /profile/pin/security-question:
+    get:
+      description: Get the user's configured security question for PIN recovery.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Security question
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Not configured
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get security question
+      tags:
+      - profile
+  /profile/pin/verify:
+    post:
+      consumes:
+      - application/json
+      description: Verify if the provided PIN code matches the stored one.
+      parameters:
+      - description: PIN Code
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/user.VerifyPINRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: PIN verified
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request or incorrect PIN
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Verify PIN code
       tags:
       - profile
   /transactions:

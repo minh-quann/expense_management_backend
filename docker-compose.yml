@@ -19,6 +19,32 @@ services:
       timeout: 5s
       retries: 5
 
+  app:
+    build: .
+    container_name: expense_mgmt_app
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=${DB_USER:-expense_user}
+      - DB_PASSWORD=${DB_PASSWORD:-expense_secret}
+      - DB_NAME=${DB_NAME:-expense_management}
+      - DB_SSLMODE=disable
+      - JWT_SECRET=${JWT_SECRET:-your_super_secret_jwt_key_here}
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+    volumes:
+      - ./uploads:/app/uploads
+
 volumes:
   postgres_data:
     driver: local
+

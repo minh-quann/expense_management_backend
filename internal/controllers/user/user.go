@@ -122,3 +122,151 @@ func (ctrl *UserController) UploadAvatar(c *gin.Context) {
 
 	c.JSON(http.StatusOK, user)
 }
+
+// SetPIN handles configuring PIN code protection
+// @Summary      Set PIN code
+// @Description  Configure or update the user's PIN code and security question/answer.
+// @Tags         profile
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        request body SetPINRequest true "PIN Settings"
+// @Success      200  {object}  map[string]interface{} "PIN set successfully"
+// @Failure      400  {object}  map[string]interface{} "Bad request"
+// @Failure      401  {object}  map[string]interface{} "Unauthorized"
+// @Failure      500  {object}  map[string]interface{} "Internal server error"
+// @Router       /profile/pin [post]
+func (ctrl *UserController) SetPIN(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	var req SetPINRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	err := ctrl.userService.SetPIN(userID, req.Pin, req.SecurityQuestion, req.SecurityAnswer)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "PIN and security question set successfully"})
+}
+
+// VerifyPIN handles verifying the PIN code
+// @Summary      Verify PIN code
+// @Description  Verify if the provided PIN code matches the stored one.
+// @Tags         profile
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        request body VerifyPINRequest true "PIN Code"
+// @Success      200  {object}  map[string]interface{} "PIN verified"
+// @Failure      400  {object}  map[string]interface{} "Bad request or incorrect PIN"
+// @Failure      401  {object}  map[string]interface{} "Unauthorized"
+// @Router       /profile/pin/verify [post]
+func (ctrl *UserController) VerifyPIN(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	var req VerifyPINRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	verified, err := ctrl.userService.VerifyPIN(userID, req.Pin)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if !verified {
+		c.JSON(http.StatusBadRequest, gin.H{"verified": false, "error": "Incorrect PIN"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"verified": true, "message": "PIN verified successfully"})
+}
+
+// GetSecurityQuestion retrieves the security question for recovery
+// @Summary      Get security question
+// @Description  Get the user's configured security question for PIN recovery.
+// @Tags         profile
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  map[string]interface{} "Security question"
+// @Failure      400  {object}  map[string]interface{} "Not configured"
+// @Failure      401  {object}  map[string]interface{} "Unauthorized"
+// @Router       /profile/pin/security-question [get]
+func (ctrl *UserController) GetSecurityQuestion(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	question, err := ctrl.userService.GetSecurityQuestion(userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"security_question": question})
+}
+
+// ResetPIN handles resetting the PIN using the security answer
+// @Summary      Reset PIN code
+// @Description  Reset the PIN code using the correct security answer.
+// @Tags         profile
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        request body ResetPINRequest true "Reset PIN Info"
+// @Success      200  {object}  map[string]interface{} "PIN reset successfully"
+// @Failure      400  {object}  map[string]interface{} "Incorrect answer or invalid PIN"
+// @Failure      401  {object}  map[string]interface{} "Unauthorized"
+// @Router       /profile/pin/reset [post]
+func (ctrl *UserController) ResetPIN(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	var req ResetPINRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	err := ctrl.userService.ResetPIN(userID, req.SecurityAnswer, req.NewPin)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "PIN reset successfully"})
+}
+
+// DisablePIN handles disabling PIN protection
+// @Summary      Disable PIN code
+// @Description  Disable PIN code protection by providing the correct PIN.
+// @Tags         profile
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        request body DisablePINRequest true "Disable PIN Info"
+// @Success      200  {object}  map[string]interface{} "PIN disabled successfully"
+// @Failure      400  {object}  map[string]interface{} "Incorrect PIN"
+// @Failure      401  {object}  map[string]interface{} "Unauthorized"
+// @Router       /profile/pin [delete]
+func (ctrl *UserController) DisablePIN(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	var req DisablePINRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	err := ctrl.userService.DisablePIN(userID, req.Pin)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "PIN protection disabled successfully"})
+}

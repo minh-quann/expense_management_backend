@@ -71,6 +71,13 @@ func SetupRouter(
 				profile.GET("", userCtrl.GetProfile)
 				profile.PUT("", userCtrl.UpdateProfile)
 				profile.POST("/avatar", userCtrl.UploadAvatar)
+
+				// PIN and Security routes
+				profile.POST("/pin", userCtrl.SetPIN)
+				profile.POST("/pin/verify", userCtrl.VerifyPIN)
+				profile.GET("/pin/security-question", userCtrl.GetSecurityQuestion)
+				profile.POST("/pin/reset", userCtrl.ResetPIN)
+				profile.DELETE("/pin", userCtrl.DisablePIN)
 			}
 
 			// Wallet routes
