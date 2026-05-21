@@ -103,6 +103,7 @@ func SetupRouter(
 			transactions := protected.Group("/transactions")
 			{
 				transactions.GET("", transactionCtrl.GetTransactions)
+				transactions.GET("/statistics", transactionCtrl.GetStatistics)
 				transactions.POST("", transactionCtrl.CreateTransaction)
 				transactions.PUT("/:id", transactionCtrl.UpdateTransaction)
 				transactions.DELETE("/:id", transactionCtrl.DeleteTransaction)

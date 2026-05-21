@@ -2,6 +2,7 @@ package transaction
 
 import (
 	"net/http"
+	"strconv"
 
 	"expense_management_backend/internal/services"
 
@@ -157,4 +158,51 @@ func (ctrl *TransactionController) DeleteTransaction(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Transaction deleted successfully"})
+}
+
+// GetStatistics retrieves statistics of income and expenses grouped by categories
+// @Summary      Get transaction statistics
+// @Description  Get sum of income and expenses grouped by categories for a given month and year
+// @Tags         transactions
+// @Produce      json
+// @Security     BearerAuth
+// @Param        month query int false "Month (1-12)"
+// @Param        year query int false "Year (e.g. 2026)"
+// @Param        wallet_id query string false "Filter by wallet ID"
+// @Success      200  {object}  services.StatisticsResponse
+// @Failure      400  {object}  map[string]interface{} "Bad request"
+// @Failure      500  {object}  map[string]interface{} "Internal server error"
+// @Router       /transactions/statistics [get]
+func (ctrl *TransactionController) GetStatistics(c *gin.Context) {
+	userID := c.GetString("user_id")
+	walletID := c.Query("wallet_id")
+
+	var month, year int
+	var err error
+
+	monthStr := c.Query("month")
+	if monthStr != "" {
+		month, err = strconv.Atoi(monthStr)
+		if err != nil || month < 1 || month > 12 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid month parameter. Must be 1-12"})
+			return
+		}
+	}
+
+	yearStr := c.Query("year")
+	if yearStr != "" {
+		year, err = strconv.Atoi(yearStr)
+		if err != nil || year < 1900 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid year parameter"})
+			return
+		}
+	}
+
+	stats, err := ctrl.txService.GetStatistics(userID, walletID, month, year)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, stats)
 }

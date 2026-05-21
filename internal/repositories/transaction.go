@@ -1,6 +1,8 @@
 package repositories
 
 import (
+	"time"
+
 	"expense_management_backend/internal/models"
 
 	"gorm.io/gorm"
@@ -62,4 +64,33 @@ func (r *TransactionRepository) CountByWalletID(userID string, walletID string) 
 		Where("user_id = ? AND (wallet_id = ? OR to_wallet_id = ?)", userID, walletID, walletID).
 		Count(&txCount).Error
 	return txCount, err
+}
+
+type CategoryReportDB struct {
+	CategoryID    string  `gorm:"column:category_id"`
+	CategoryName  string  `gorm:"column:category_name"`
+	CategoryIcon  string  `gorm:"column:category_icon"`
+	CategoryColor string  `gorm:"column:category_color"`
+	CategoryType  string  `gorm:"column:category_type"`
+	TotalAmount   float64 `gorm:"column:total_amount"`
+}
+
+func (r *TransactionRepository) GetStatistics(userID string, walletID string, startDate, endDate time.Time) ([]CategoryReportDB, error) {
+	var results []CategoryReportDB
+
+	query := r.db.Model(&models.Transaction{}).
+		Select("transactions.category_id, categories.name as category_name, categories.icon as category_icon, categories.color as category_color, categories.type as category_type, SUM(transactions.amount) as total_amount").
+		Joins("JOIN categories ON transactions.category_id = categories.id").
+		Where("transactions.user_id = ?", userID).
+		Where("transactions.date >= ? AND transactions.date <= ?", startDate, endDate)
+
+	if walletID != "" {
+		query = query.Where("transactions.wallet_id = ? OR transactions.to_wallet_id = ?", walletID, walletID)
+	}
+
+	err := query.Group("transactions.category_id, categories.name, categories.icon, categories.color, categories.type").
+		Order("total_amount DESC").
+		Scan(&results).Error
+
+	return results, err
 }

@@ -338,3 +338,95 @@ func (s *TransactionService) DeleteTransaction(userID, transactionID string) err
 
 	return nil
 }
+
+type CategoryReport struct {
+	CategoryID    string  `json:"category_id"`
+	CategoryName  string  `json:"category_name"`
+	CategoryIcon  string  `json:"category_icon"`
+	CategoryColor string  `json:"category_color"`
+	TotalAmount   float64 `json:"total_amount"`
+	Percentage    float64 `json:"percentage"`
+}
+
+type StatisticsResponse struct {
+	TotalIncome       float64          `json:"total_income"`
+	TotalExpense      float64          `json:"total_expense"`
+	NetBalance        float64          `json:"net_balance"`
+	ExpenseCategories []CategoryReport `json:"expense_categories"`
+	IncomeCategories  []CategoryReport `json:"income_categories"`
+}
+
+func (s *TransactionService) GetStatistics(userID string, walletID string, month, year int) (*StatisticsResponse, error) {
+	now := time.Now()
+	if year == 0 {
+		year = now.Year()
+	}
+	if month < 1 || month > 12 {
+		month = int(now.Month())
+	}
+
+	// We calculate date ranges in local or UTC? GORM works with time.Time. 
+	// Let's use Local or UTC based on how other parts query. 
+	// Usually local/UTC depending on db timezone. Let's create local range.
+	startDate := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.Local)
+	endDate := startDate.AddDate(0, 1, 0).Add(-time.Nanosecond)
+
+	dbReports, err := s.txRepo.GetStatistics(userID, walletID, startDate, endDate)
+	if err != nil {
+		return nil, err
+	}
+
+	var totalIncome float64
+	var totalExpense float64
+	var expenseCategories []CategoryReport
+	var incomeCategories []CategoryReport
+
+	// Calculate totals first
+	for _, report := range dbReports {
+		if report.CategoryType == "INCOME" {
+			totalIncome += report.TotalAmount
+		} else if report.CategoryType == "EXPENSE" {
+			totalExpense += report.TotalAmount
+		}
+	}
+
+	// Build the detailed reports with percentages
+	for _, report := range dbReports {
+		var pct float64
+		if report.CategoryType == "INCOME" && totalIncome > 0 {
+			pct = (report.TotalAmount / totalIncome) * 100
+		} else if report.CategoryType == "EXPENSE" && totalExpense > 0 {
+			pct = (report.TotalAmount / totalExpense) * 100
+		}
+
+		catReport := CategoryReport{
+			CategoryID:    report.CategoryID,
+			CategoryName:  report.CategoryName,
+			CategoryIcon:  report.CategoryIcon,
+			CategoryColor: report.CategoryColor,
+			TotalAmount:   report.TotalAmount,
+			Percentage:    pct,
+		}
+
+		if report.CategoryType == "INCOME" {
+			incomeCategories = append(incomeCategories, catReport)
+		} else if report.CategoryType == "EXPENSE" {
+			expenseCategories = append(expenseCategories, catReport)
+		}
+	}
+
+	if expenseCategories == nil {
+		expenseCategories = []CategoryReport{}
+	}
+	if incomeCategories == nil {
+		incomeCategories = []CategoryReport{}
+	}
+
+	return &StatisticsResponse{
+		TotalIncome:       totalIncome,
+		TotalExpense:      totalExpense,
+		NetBalance:        totalIncome - totalExpense,
+		ExpenseCategories: expenseCategories,
+		IncomeCategories:  incomeCategories,
+	}, nil
+}

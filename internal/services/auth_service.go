@@ -72,7 +72,7 @@ func (s *AuthService) Register(email, password, displayName string) (*models.Use
 			return nil, "", "", errors.New("Failed to generate token")
 		}
 
-		refreshToken, err := s.generateAndSaveRefreshToken(tx, existingUser.ID)
+		refreshToken, err := s.generateAndSaveRefreshToken(s.db, existingUser.ID)
 		if err != nil {
 			return nil, "", "", errors.New("Failed to generate refresh token")
 		}
