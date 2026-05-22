@@ -84,7 +84,26 @@ Hệ thống sử dụng Authorization Header định dạng Bearer Token để 
 - **Mã PIN**: Được băm một chiều an toàn bằng thuật toán **`bcrypt`** (độ phức tạp cao) trước khi lưu vào cột `pin_hash` trong DB.
 - **Câu trả lời bảo mật (Security Answer)**: Trước khi băm, chuỗi câu trả lời sẽ được **chuẩn hóa** (loại bỏ khoảng trắng thừa ở hai đầu, chuyển tất cả ký tự thành chữ thường không dấu) để tăng tỷ lệ nhập đúng của người dùng, sau đó mới băm bằng `bcrypt` và lưu vào cột `security_answer_hash`.
 
-### 3. Database Auto-Migration
+### 3. Chuẩn hóa Phản hồi Lỗi (Standardized API Error Responses)
+Hệ thống áp dụng chuẩn hóa cấu trúc lỗi trả về cho client. Thay vì trả về các chuỗi text thô dễ gây lỗi phân tích cú pháp hoặc khó bản địa hóa (localization) ở phía Client, toàn bộ các lỗi nghiệp vụ và hệ thống đều được bọc trong một struct thống nhất:
+
+* **Định dạng JSON phản hồi lỗi**:
+  ```json
+  {
+    "error": {
+      "code": "AUTH_INVALID_CREDENTIALS",
+      "message": "Invalid email or password"
+    }
+  }
+  ```
+* **Cách thức hoạt động trên Backend**:
+  - Struct `APIError` (định nghĩa trong [response.go](file:///home/quan/Documents/expense_management_backend/internal/utils/response.go)) triển khai interface `error` của Go.
+  - Các hàm tiện ích:
+    - `RespondWithError(c *gin.Context, statusCode int, errorCode string, message string)`: Trả về lỗi với mã lỗi tùy chọn.
+    - `RespondWithCustomError(c *gin.Context, statusCode int, err error)`: Tự động kiểm tra nếu `err` là kiểu `APIError` thì xuất ra JSON lỗi chuẩn hóa tương ứng; ngược lại, xuất ra lỗi hệ thống chung với code `GENERIC_ERROR`.
+  - Danh sách mã lỗi (`code`) được định nghĩa tiền tố theo nhóm tính năng (ví dụ: `AUTH_...` cho module Xác thực) giúp Client dễ dàng ánh xạ sang các thông báo Tiếng Việt thân thiện.
+
+### 4. Database Auto-Migration
 Mỗi lần Go Backend khởi chạy, lớp cơ sở dữ liệu của GORM sẽ kích hoạt tính năng tự động dò tìm cấu trúc DB:
 - Tự động phát hiện các model mới và ánh xạ thành các bảng tương ứng trong PostgreSQL.
 - Tự động thêm các cột mới (ví dụ: `pin_hash`, `security_question`, `security_answer_hash`) vào bảng `users` mà **hoàn toàn không làm ảnh hưởng hay mất mát dữ liệu hiện có** của người dùng.

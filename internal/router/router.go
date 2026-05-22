@@ -26,6 +26,9 @@ func SetupRouter(
 ) *gin.Engine {
 	r := gin.Default()
 
+	// Enable CORS middleware
+	r.Use(middleware.CORSMiddleware())
+
 	// Swagger UI route
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
