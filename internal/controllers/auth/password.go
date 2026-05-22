@@ -3,6 +3,8 @@ package auth
 import (
 	"net/http"
 
+	"expense_management_backend/internal/utils"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -21,13 +23,13 @@ import (
 func (ctrl *AuthController) ForgotPassword(c *gin.Context) {
 	var req ForgotPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.RespondWithError(c, http.StatusBadRequest, "AUTH_INVALID_REQUEST", err.Error())
 		return
 	}
 
 	token, err := ctrl.authService.ForgotPassword(req.Email)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.RespondWithCustomError(c, http.StatusBadRequest, err)
 		return
 	}
 
@@ -52,13 +54,13 @@ func (ctrl *AuthController) ForgotPassword(c *gin.Context) {
 func (ctrl *AuthController) ResetPassword(c *gin.Context) {
 	var req ResetPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.RespondWithError(c, http.StatusBadRequest, "AUTH_INVALID_REQUEST", err.Error())
 		return
 	}
 
 	err := ctrl.authService.ResetPassword(req.Email, req.Token, req.NewPassword)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		utils.RespondWithCustomError(c, http.StatusUnauthorized, err)
 		return
 	}
 

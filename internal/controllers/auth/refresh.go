@@ -3,6 +3,8 @@ package auth
 import (
 	"net/http"
 
+	"expense_management_backend/internal/utils"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -21,13 +23,13 @@ import (
 func (ctrl *AuthController) RefreshToken(c *gin.Context) {
 	var req RefreshTokenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.RespondWithError(c, http.StatusBadRequest, "AUTH_INVALID_REQUEST", err.Error())
 		return
 	}
 
 	token, refreshToken, err := ctrl.authService.RefreshToken(req.RefreshToken)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		utils.RespondWithCustomError(c, http.StatusUnauthorized, err)
 		return
 	}
 

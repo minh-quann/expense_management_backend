@@ -3,6 +3,8 @@ package auth
 import (
 	"net/http"
 
+	"expense_management_backend/internal/utils"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -18,16 +20,17 @@ import (
 // @Failure      401  {object}  map[string]interface{} "Unauthorized"
 // @Failure      500  {object}  map[string]interface{} "Internal server error"
 // @Router       /auth/login [post]
+// @Router       /auth/login [post]
 func (ctrl *AuthController) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.RespondWithError(c, http.StatusBadRequest, "AUTH_INVALID_REQUEST", err.Error())
 		return
 	}
 
 	user, token, refreshToken, err := ctrl.authService.Login(req.Email, req.Password)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		utils.RespondWithCustomError(c, http.StatusUnauthorized, err)
 		return
 	}
 
@@ -55,13 +58,13 @@ func (ctrl *AuthController) Login(c *gin.Context) {
 func (ctrl *AuthController) GoogleLogin(c *gin.Context) {
 	var req GoogleLoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.RespondWithError(c, http.StatusBadRequest, "AUTH_INVALID_REQUEST", err.Error())
 		return
 	}
 
 	user, token, refreshToken, isNewUser, err := ctrl.authService.GoogleLogin(req.IDToken)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		utils.RespondWithCustomError(c, http.StatusUnauthorized, err)
 		return
 	}
 

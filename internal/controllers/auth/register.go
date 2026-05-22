@@ -3,6 +3,8 @@ package auth
 import (
 	"net/http"
 
+	"expense_management_backend/internal/utils"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -20,13 +22,13 @@ import (
 func (ctrl *AuthController) Register(c *gin.Context) {
 	var req RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.RespondWithError(c, http.StatusBadRequest, "AUTH_INVALID_REQUEST", err.Error())
 		return
 	}
 
 	user, token, refreshToken, err := ctrl.authService.Register(req.Email, req.Password, req.DisplayName)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.RespondWithCustomError(c, http.StatusBadRequest, err)
 		return
 	}
 

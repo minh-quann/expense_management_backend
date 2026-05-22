@@ -43,14 +43,14 @@ func (s *AuthService) Register(email, password, displayName string) (*models.Use
 		// Email already exists
 		if existingUser.PasswordHash != nil {
 			tx.Rollback()
-			return nil, "", "", errors.New("Email already registered")
+			return nil, "", "", utils.NewAPIError("AUTH_EMAIL_ALREADY_REGISTERED", "Email already registered")
 		}
 
 		// User existed via Google but has no password yet. Link password to this account.
 		hash, err := utils.HashPassword(password)
 		if err != nil {
 			tx.Rollback()
-			return nil, "", "", errors.New("Failed to process password")
+			return nil, "", "", utils.NewAPIError("AUTH_PASSWORD_PROCESSING_FAILED", "Failed to process password")
 		}
 
 		existingUser.PasswordHash = &hash
@@ -60,34 +60,34 @@ func (s *AuthService) Register(email, password, displayName string) (*models.Use
 
 		if err := txUserRepo.Save(existingUser); err != nil {
 			tx.Rollback()
-			return nil, "", "", errors.New("Failed to update user details")
+			return nil, "", "", utils.NewAPIError("AUTH_USER_UPDATE_FAILED", "Failed to update user details")
 		}
 
 		if err := tx.Commit().Error; err != nil {
-			return nil, "", "", errors.New("Failed to commit transaction")
+			return nil, "", "", utils.NewAPIError("AUTH_TRANSACTION_FAILED", "Failed to commit transaction")
 		}
 
 		token, err := utils.GenerateToken(existingUser.ID, existingUser.Email)
 		if err != nil {
-			return nil, "", "", errors.New("Failed to generate token")
+			return nil, "", "", utils.NewAPIError("AUTH_TOKEN_GENERATION_FAILED", "Failed to generate token")
 		}
 
 		refreshToken, err := s.generateAndSaveRefreshToken(s.db, existingUser.ID)
 		if err != nil {
-			return nil, "", "", errors.New("Failed to generate refresh token")
+			return nil, "", "", utils.NewAPIError("AUTH_REFRESH_TOKEN_GENERATION_FAILED", "Failed to generate refresh token")
 		}
 
 		return existingUser, token, refreshToken, nil
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 		tx.Rollback()
-		return nil, "", "", errors.New("Database error")
+		return nil, "", "", utils.NewAPIError("AUTH_DATABASE_ERROR", "Database error")
 	}
 
 	// Create new user
 	hash, err := utils.HashPassword(password)
 	if err != nil {
 		tx.Rollback()
-		return nil, "", "", errors.New("Failed to hash password")
+		return nil, "", "", utils.NewAPIError("AUTH_PASSWORD_HASH_FAILED", "Failed to hash password")
 	}
 
 	newUser := models.User{
@@ -99,27 +99,27 @@ func (s *AuthService) Register(email, password, displayName string) (*models.Use
 
 	if err := txUserRepo.Create(&newUser); err != nil {
 		tx.Rollback()
-		return nil, "", "", errors.New("Failed to create user")
+		return nil, "", "", utils.NewAPIError("AUTH_USER_CREATION_FAILED", "Failed to create user")
 	}
 
 	// Seed default wallet and categories
 	if err := database.SeedDefaultData(tx, newUser.ID); err != nil {
 		tx.Rollback()
-		return nil, "", "", errors.New("Failed to seed default data")
+		return nil, "", "", utils.NewAPIError("AUTH_SEED_DATA_FAILED", "Failed to seed default data")
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		return nil, "", "", errors.New("Failed to commit transaction")
+		return nil, "", "", utils.NewAPIError("AUTH_TRANSACTION_FAILED", "Failed to commit transaction")
 	}
 
 	token, err := utils.GenerateToken(newUser.ID, newUser.Email)
 	if err != nil {
-		return nil, "", "", errors.New("Failed to generate token")
+		return nil, "", "", utils.NewAPIError("AUTH_TOKEN_GENERATION_FAILED", "Failed to generate token")
 	}
 
 	refreshToken, err := s.generateAndSaveRefreshToken(s.db, newUser.ID)
 	if err != nil {
-		return nil, "", "", errors.New("Failed to generate refresh token")
+		return nil, "", "", utils.NewAPIError("AUTH_REFRESH_TOKEN_GENERATION_FAILED", "Failed to generate refresh token")
 	}
 
 	return &newUser, token, refreshToken, nil
@@ -129,27 +129,27 @@ func (s *AuthService) Login(email, password string) (*models.User, string, strin
 	user, err := s.userRepo.FindByEmail(email)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, "", "", errors.New("Invalid email or password")
+			return nil, "", "", utils.NewAPIError("AUTH_INVALID_CREDENTIALS", "Invalid email or password")
 		}
-		return nil, "", "", errors.New("Database error")
+		return nil, "", "", utils.NewAPIError("AUTH_DATABASE_ERROR", "Database error")
 	}
 
 	if user.PasswordHash == nil {
-		return nil, "", "", errors.New("This account is only registered with Google Login. Please use Google to sign in.")
+		return nil, "", "", utils.NewAPIError("AUTH_GOOGLE_ONLY_ACCOUNT", "This account is only registered with Google Login. Please use Google to sign in.")
 	}
 
 	if !utils.CheckPasswordHash(password, *user.PasswordHash) {
-		return nil, "", "", errors.New("Invalid email or password")
+		return nil, "", "", utils.NewAPIError("AUTH_INVALID_CREDENTIALS", "Invalid email or password")
 	}
 
 	token, err := utils.GenerateToken(user.ID, user.Email)
 	if err != nil {
-		return nil, "", "", errors.New("Failed to generate token")
+		return nil, "", "", utils.NewAPIError("AUTH_TOKEN_GENERATION_FAILED", "Failed to generate token")
 	}
 
 	refreshToken, err := s.generateAndSaveRefreshToken(s.db, user.ID)
 	if err != nil {
-		return nil, "", "", errors.New("Failed to generate refresh token")
+		return nil, "", "", utils.NewAPIError("AUTH_REFRESH_TOKEN_GENERATION_FAILED", "Failed to generate refresh token")
 	}
 
 	return user, token, refreshToken, nil
@@ -159,7 +159,7 @@ func (s *AuthService) GoogleLogin(idToken string) (*models.User, string, string,
 	// Verify ID token with Google API
 	googleInfo, err := utils.VerifyGoogleToken(idToken)
 	if err != nil {
-		return nil, "", "", false, errors.New("Invalid Google token: " + err.Error())
+		return nil, "", "", false, utils.NewAPIError("AUTH_GOOGLE_TOKEN_INVALID", "Invalid Google token: "+err.Error())
 	}
 
 	tx := s.db.Begin()
@@ -182,28 +182,28 @@ func (s *AuthService) GoogleLogin(idToken string) (*models.User, string, string,
 			}
 			if err := txUserRepo.Save(user); err != nil {
 				tx.Rollback()
-				return nil, "", "", false, errors.New("Failed to link Google account")
+				return nil, "", "", false, utils.NewAPIError("AUTH_GOOGLE_LINK_FAILED", "Failed to link Google account")
 			}
 		}
 
 		if err := tx.Commit().Error; err != nil {
-			return nil, "", "", false, errors.New("Failed to commit transaction")
+			return nil, "", "", false, utils.NewAPIError("AUTH_TRANSACTION_FAILED", "Failed to commit transaction")
 		}
 
 		token, err := utils.GenerateToken(user.ID, user.Email)
 		if err != nil {
-			return nil, "", "", false, errors.New("Failed to generate token")
+			return nil, "", "", false, utils.NewAPIError("AUTH_TOKEN_GENERATION_FAILED", "Failed to generate token")
 		}
 
 		refreshToken, err := s.generateAndSaveRefreshToken(s.db, user.ID)
 		if err != nil {
-			return nil, "", "", false, errors.New("Failed to generate refresh token")
+			return nil, "", "", false, utils.NewAPIError("AUTH_REFRESH_TOKEN_GENERATION_FAILED", "Failed to generate refresh token")
 		}
 
 		return user, token, refreshToken, false, nil
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 		tx.Rollback()
-		return nil, "", "", false, errors.New("Database error")
+		return nil, "", "", false, utils.NewAPIError("AUTH_DATABASE_ERROR", "Database error")
 	}
 
 	// User does not exist, register new Google user
@@ -217,27 +217,27 @@ func (s *AuthService) GoogleLogin(idToken string) (*models.User, string, string,
 
 	if err := txUserRepo.Create(&newUser); err != nil {
 		tx.Rollback()
-		return nil, "", "", false, errors.New("Failed to create user")
+		return nil, "", "", false, utils.NewAPIError("AUTH_USER_CREATION_FAILED", "Failed to create user")
 	}
 
 	// Seed default wallet and categories
 	if err := database.SeedDefaultData(tx, newUser.ID); err != nil {
 		tx.Rollback()
-		return nil, "", "", false, errors.New("Failed to seed default data")
+		return nil, "", "", false, utils.NewAPIError("AUTH_SEED_DATA_FAILED", "Failed to seed default data")
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		return nil, "", "", false, errors.New("Failed to commit transaction")
+		return nil, "", "", false, utils.NewAPIError("AUTH_TRANSACTION_FAILED", "Failed to commit transaction")
 	}
 
 	token, err := utils.GenerateToken(newUser.ID, newUser.Email)
 	if err != nil {
-		return nil, "", "", false, errors.New("Failed to generate token")
+		return nil, "", "", false, utils.NewAPIError("AUTH_TOKEN_GENERATION_FAILED", "Failed to generate token")
 	}
 
 	refreshToken, err := s.generateAndSaveRefreshToken(s.db, newUser.ID)
 	if err != nil {
-		return nil, "", "", false, errors.New("Failed to generate refresh token")
+		return nil, "", "", false, utils.NewAPIError("AUTH_REFRESH_TOKEN_GENERATION_FAILED", "Failed to generate refresh token")
 	}
 
 	return &newUser, token, refreshToken, true, nil
@@ -247,15 +247,15 @@ func (s *AuthService) RefreshToken(refreshTokenStr string) (string, string, erro
 	storedToken, err := s.userRepo.FindRefreshToken(refreshTokenStr)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return "", "", errors.New("Invalid refresh token")
+			return "", "", utils.NewAPIError("AUTH_INVALID_REFRESH_TOKEN", "Invalid refresh token")
 		}
-		return "", "", errors.New("Database error")
+		return "", "", utils.NewAPIError("AUTH_DATABASE_ERROR", "Database error")
 	}
 
 	// Check if expired
 	if time.Now().After(storedToken.ExpiresAt) {
 		s.userRepo.DeleteRefreshToken(storedToken)
-		return "", "", errors.New("Refresh token expired. Please login again.")
+		return "", "", utils.NewAPIError("AUTH_REFRESH_TOKEN_EXPIRED", "Refresh token expired. Please login again.")
 	}
 
 	// Rotate refresh token: Delete the old one
@@ -264,13 +264,13 @@ func (s *AuthService) RefreshToken(refreshTokenStr string) (string, string, erro
 	// Generate new access token
 	accessToken, err := utils.GenerateToken(storedToken.UserID, storedToken.User.Email)
 	if err != nil {
-		return "", "", errors.New("Failed to generate access token")
+		return "", "", utils.NewAPIError("AUTH_TOKEN_GENERATION_FAILED", "Failed to generate access token")
 	}
 
 	// Generate new refresh token
 	newRefreshToken, err := s.generateAndSaveRefreshToken(s.db, storedToken.UserID)
 	if err != nil {
-		return "", "", errors.New("Failed to generate refresh token")
+		return "", "", utils.NewAPIError("AUTH_REFRESH_TOKEN_GENERATION_FAILED", "Failed to generate refresh token")
 	}
 
 	return accessToken, newRefreshToken, nil
@@ -280,19 +280,19 @@ func (s *AuthService) ForgotPassword(email string) (string, error) {
 	user, err := s.userRepo.FindByEmail(email)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return "", errors.New("No account found with this email")
+			return "", utils.NewAPIError("AUTH_EMAIL_NOT_FOUND", "No account found with this email")
 		}
-		return "", errors.New("Database error")
+		return "", utils.NewAPIError("AUTH_DATABASE_ERROR", "Database error")
 	}
 
 	if user.PasswordHash == nil {
-		return "", errors.New("This account is registered with Google. Password reset is not available.")
+		return "", utils.NewAPIError("AUTH_GOOGLE_ONLY_RESET_UNAVAILABLE", "This account is registered with Google. Password reset is not available.")
 	}
 
 	// Generate numeric/alphanumeric 6-digit reset code
 	resetToken, err := utils.GenerateRandomString(3) // 6 hex digits
 	if err != nil {
-		return "", errors.New("Failed to generate reset code")
+		return "", utils.NewAPIError("AUTH_RESET_CODE_GENERATION_FAILED", "Failed to generate reset code")
 	}
 	resetToken = strings.ToUpper(resetToken)
 
@@ -307,12 +307,12 @@ func (s *AuthService) ForgotPassword(email string) (string, error) {
 	}
 
 	if err := s.userRepo.CreatePasswordReset(&passwordReset); err != nil {
-		return "", errors.New("Failed to store reset token")
+		return "", utils.NewAPIError("AUTH_RESET_CODE_SAVE_FAILED", "Failed to store reset token")
 	}
 
 	// Send reset code email (falls back to console logging if SMTP host is empty)
 	if err := utils.SendResetPasswordEmail(s.cfg, email, resetToken); err != nil {
-		return "", errors.New("Failed to send reset email")
+		return "", utils.NewAPIError("AUTH_RESET_EMAIL_SEND_FAILED", "Failed to send reset email")
 	}
 
 	return resetToken, nil
@@ -322,30 +322,30 @@ func (s *AuthService) ResetPassword(email, token, newPassword string) error {
 	passwordReset, err := s.userRepo.FindPasswordReset(email, strings.ToUpper(token))
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return errors.New("Invalid email or reset code")
+			return utils.NewAPIError("AUTH_INVALID_RESET_CODE", "Invalid email or reset code")
 		}
-		return errors.New("Database error")
+		return utils.NewAPIError("AUTH_DATABASE_ERROR", "Database error")
 	}
 
 	// Check expiration
 	if time.Now().After(passwordReset.ExpiresAt) {
 		s.userRepo.DeletePasswordReset(passwordReset)
-		return errors.New("Reset code expired")
+		return utils.NewAPIError("AUTH_RESET_CODE_EXPIRED", "Reset code expired")
 	}
 
 	user, err := s.userRepo.FindByEmail(email)
 	if err != nil {
-		return errors.New("Failed to find user")
+		return utils.NewAPIError("AUTH_USER_NOT_FOUND", "Failed to find user")
 	}
 
 	hash, err := utils.HashPassword(newPassword)
 	if err != nil {
-		return errors.New("Failed to process new password")
+		return utils.NewAPIError("AUTH_PASSWORD_PROCESSING_FAILED", "Failed to process new password")
 	}
 
 	user.PasswordHash = &hash
 	if err := s.userRepo.Save(user); err != nil {
-		return errors.New("Failed to update password")
+		return utils.NewAPIError("AUTH_PASSWORD_UPDATE_FAILED", "Failed to update password")
 	}
 
 	// Delete used token
